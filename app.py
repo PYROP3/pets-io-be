@@ -88,7 +88,7 @@ def get_req_verify_account():
     })
 
     if (__db is not None):
-        app.logger.debug('Account for {} already exists'.format(__email))
+        app.logger.debug('Account for {} already exists'.format(__auth[c.USER_EMAIL_KEY]))
         abort(401)
 
     app.logger.debug('Validated user ' + str(__auth))
