@@ -1,12 +1,17 @@
-from types import MethodType
 from constants import constants
-from emails import email_sender
-from mongoclient import mongo_helper
+from datetime import datetime
 from dotenv import load_dotenv
+from emails import email_sender
 from flask import Flask, request, abort, render_template
-import utils
-import string
+from mongoclient import mongo_helper
+from types import MethodType
+from bson.binary import Binary
+
+import base64
+import notifications
 import random
+import string
+import utils
 
 load_dotenv()
 
@@ -77,6 +82,14 @@ def get_req_verify_account():
     if __auth is None:
         app.logger.debug('No such pending user found')
         abort(401)
+    
+    __db = db.users.find_one({
+        c.USER_EMAIL_KEY: __auth[c.USER_EMAIL_KEY]
+    })
+
+    if (__db is not None):
+        app.logger.debug('Account for {} already exists'.format(__email))
+        abort(401)
 
     app.logger.debug('Validated user ' + str(__auth))
 
@@ -84,7 +97,8 @@ def get_req_verify_account():
         c.USER_EMAIL_KEY: __auth[c.USER_EMAIL_KEY],
         c.USER_PASS_KEY: __auth[c.USER_PASS_KEY],
         c.USER_NAME_KEY: __auth[c.USER_NAME_KEY],
-        c.USER_N_PETS_KEY: __auth[c.USER_N_PETS_KEY],
+        c.USER_N_PETS_KEY: -1 * __auth[c.USER_N_PETS_KEY],
+        c.USER_PENDING_PETS_KEY: __auth[c.USER_N_PETS_KEY],
         c.USER_N_DEVICES_KEY: 0,
     }
 
@@ -108,10 +122,8 @@ def post_req_auth():
         app.logger.debug('Could not auth ' + __email)
         abort(401)
 
-    __user = db.users.find_one({c.USER_EMAIL_KEY: __email})
+    __user = db.users.find_one({c.USER_EMAIL_KEY: __email}, {c.USER_PASS_KEY: 0, "_id": 0})
     app.logger.debug('Authenticated user ' + str(__user))
-    del(__user[c.USER_PASS_KEY])
-    del(__user["_id"])
     __user[c.USER_TOKEN_KEY] = __auth
 
     return __user
@@ -129,5 +141,28 @@ def get_req_deauth():
     __token = request.args.get(c.USER_TOKEN_KEY)
 
     mongo.logout(__auth, __token)
+
+    return c.SUCCESS_MSG
+
+@app.route(c.EVENT_TRIGGERED_REQUEST, methods=['POST'])
+def post_req_event_triggered():
+    app.logger.debug(post_req_event_triggered.__name__)
+    app.logger.debug(request.get_json())
+
+    __form = request.get_json()
+    __now = datetime.utcnow()
+    __device_id = __form['deviceId']
+    __img_bytes = base64.b64decode(__form['img'])
+    __event_extra = __form['extra']
+
+    # TODO detect pet with AI
+    __user = mongo.event(__now, __device_id, None, __img_bytes, __event_extra)
+
+    if __user is not None:
+        for __fcm_id in mongo.get_fcm_ids(__user):
+            notifications.send_to_token(__fcm_id, notifications.event_to_message(__device_id, __event_extra))
+    else:
+        app.logger.warn('Device {} triggered event but has no registered user')
+        abort(401)
 
     return c.SUCCESS_MSG

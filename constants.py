@@ -42,8 +42,10 @@ class constants:
         self.USER_TIMESTAMP_KEY    = "Timestamp"
         self.PET_PICTURES_KEY      = "PetPictures"
         self.DEVICE_ID_KEY         = "DeviceID"
+        self.DEVICE_TYPE_KEY       = "DeviceType"
         self.EVENT_PICTURE_KEY     = "EventPicture"
-        self.EVENT_EXTRA           = "EventExtra"
+        self.EVENT_PET_KEY         = "EventPet"
+        self.EVENT_EXTRA_KEY       = "EventExtra"
         self.FCM_TOKEN_KEY         = "FCMToken"
 
         # Authentication info
@@ -63,3 +65,15 @@ class constants:
         self.SERVER_URL_DEFAULT = "https://pets-io.herokuapp.com"
 
         self.SUCCESS_MSG = "Success!"
+
+        self.DEVICE_ID_FORMAT = r"PIO([A-Z]+)([0-9]+)"
+
+        self.DEVICE_TYPE_LITTERBOX = "litterbox"
+        self.DEVICE_TYPE_FOODBOWL  = "foodbowl"
+        self.DEVICE_TYPE_WATERBOWL = "waterbowl"
+
+        self.DEVICE_TYPE_DICT = {
+            "LB":self.DEVICE_TYPE_LITTERBOX,
+            "FB":self.DEVICE_TYPE_FOODBOWL,
+            "WB":self.DEVICE_TYPE_WATERBOWL
+        }

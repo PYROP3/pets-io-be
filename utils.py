@@ -1,4 +1,5 @@
 import hashlib
+import re
 from constants import constants as c
 
 def hash_password(user, password):
@@ -17,3 +18,13 @@ def parse_token(token):
         return None
     
     return __token
+
+def get_device_type(device_id):
+    __prog = re.compile(c.DEVICE_ID_FORMAT)
+    __match = __prog.match(device_id)
+    if __match is None:
+        return None
+    __dev_type = __match.groups()[0]
+    if __dev_type not in c.DEVICE_TYPE_DICT:
+        return None
+    return c.DEVICE_TYPE_DICT[__dev_type]
