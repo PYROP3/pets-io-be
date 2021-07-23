@@ -12,6 +12,7 @@ import notifications
 import random
 import string
 import utils
+import json
 
 load_dotenv()
 
@@ -147,22 +148,74 @@ def get_req_deauth():
 @app.route(c.EVENT_TRIGGERED_REQUEST, methods=['POST'])
 def post_req_event_triggered():
     app.logger.debug(post_req_event_triggered.__name__)
-    app.logger.debug(request.get_json())
+    app.logger.debug(request.get_data())
 
-    __form = request.get_json()
+    __form = json.loads(request.get_data())
     __now = datetime.utcnow()
-    __device_id = __form['deviceId']
-    __img_bytes = base64.b64decode(__form['img'])
-    __event_extra = __form['extra']
+    __device_id = __form[c.DEVICE_ID_KEY]
+    __img_bytes = base64.b64decode(__form['Img'])
+    __event_extra = None if __form['Extra'] == "null" else __form['Extra']
 
     # TODO detect pet with AI
-    __user = mongo.event(__now, __device_id, None, __img_bytes, __event_extra)
+    __pet = None
+    __user = mongo.event(__now, __device_id, __pet, __img_bytes, __event_extra)
 
     if __user is not None:
         for __fcm_id in mongo.get_fcm_ids(__user):
             notifications.send_to_token(__fcm_id, notifications.event_to_message(__device_id, __event_extra))
     else:
-        app.logger.warn('Device {} triggered event but has no registered user')
+        app.logger.warn('Device {} triggered event but has no registered user'.format(__device_id))
         abort(401)
 
+    return c.SUCCESS_MSG
+
+@app.route(c.REGISTER_DEVICE_REQUEST, methods=['POST'])
+def post_req_register_device():
+    app.logger.debug(post_req_register_device.__name__)
+
+    __auth = utils.parse_token(request.headers.get('Authorization'))
+    app.logger.debug('Register device : {}'.format(__auth))
+    
+    __db = db.sessions.find_one({
+        c.USER_TOKEN_KEY: __auth
+    }, {c.USER_EMAIL_KEY: 1})
+
+    if (__db is None):
+        app.logger.debug('Could not find user for session')
+        abort(401)
+
+    # __token = ''.join(random.SystemRandom().choice(string.ascii_uppercase + string.digits) for _ in range(32))
+    __token = "A1B2C3" # FIXME TEST ONLY
+
+    db.pending_devices.insert_one({
+        c.USER_EMAIL_KEY: __db[c.USER_EMAIL_KEY],
+        c.REQUEST_TOKEN_KEY: __token
+    })
+    
+    return __token
+
+@app.route(c.CONFIRM_DEVICE_REQUEST, methods=['POST'])
+def post_req_confirm_device():
+    app.logger.debug(post_req_confirm_device.__name__)
+    app.logger.debug(request.get_data())
+
+    __form = json.loads(request.get_data())
+    __device_id = __form[c.DEVICE_ID_KEY]
+    __request_id = __form[c.REQUEST_TOKEN_KEY]
+
+    __req = db.pending_devices.find_one_and_delete({
+        c.REQUEST_TOKEN_KEY: __request_id
+    })
+
+    if __req is None:
+        app.logger.debug('Could not find device request')
+        abort(400)
+
+    db.devices.insert_one({
+        c.USER_EMAIL_KEY: __req[c.USER_EMAIL_KEY],
+        c.DEVICE_ID_KEY: __device_id
+    })
+
+    app.logger.debug('Registered device {} to user {}'.format(__device_id, __req[c.USER_EMAIL_KEY]))
+    
     return c.SUCCESS_MSG

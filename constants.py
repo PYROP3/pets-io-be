@@ -13,6 +13,8 @@ class constants:
         self.EVENT_TRIGGERED_REQUEST     = "/eventTriggered"
         self.GET_PENDING_PETS_REQUEST    = "/getPendingPets"
         self.UPDATE_PET_PICS_REQUEST     = "/updatePetPictures"
+        self.REGISTER_DEVICE_REQUEST     = "/registerDevice"
+        self.CONFIRM_DEVICE_REQUEST      = "/confirmDeviceRegistration"
 
         # Scripts
         self.SCRIPT_PATH = "script/"
@@ -47,6 +49,7 @@ class constants:
         self.EVENT_PET_KEY         = "EventPet"
         self.EVENT_EXTRA_KEY       = "EventExtra"
         self.FCM_TOKEN_KEY         = "FCMToken"
+        self.REQUEST_TOKEN_KEY     = "Token"
 
         # Authentication info
         self.AUTH_TOKEN_LENGTH = 256

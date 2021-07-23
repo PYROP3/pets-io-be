@@ -68,5 +68,7 @@ class mongo_helper:
 
     def get_fcm_ids(self, user):
         __fcm_ids = []
-        for __fcm_query in self.client.sessions.find({c.USER_EMAIL_KEY: user}, {c.FCM_TOKEN_KEY: 1, "_id": 0}):
-            __fcm_ids += [__fcm_query[c.FCM_TOKEN_KEY]]
+        if user is not None:
+            for __fcm_query in self.client.sessions.find({c.USER_EMAIL_KEY: user}, {c.FCM_TOKEN_KEY: 1, "_id": 0}):
+                __fcm_ids += [__fcm_query[c.FCM_TOKEN_KEY]]
+        return __fcm_ids
