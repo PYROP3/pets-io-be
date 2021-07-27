@@ -1,6 +1,26 @@
+import firebase_admin
 from firebase_admin import messaging
-from constants import constants as c
+from os import environ as env
+from constants import constants
+from dotenv import load_dotenv
 import utils
+
+load_dotenv()
+c = constants()
+
+cred = firebase_admin.credentials.Certificate({
+  "type": "service_account",
+  "project_id": "pets-io-tcc",
+  "private_key_id": env["FIREBASE_KEY_ID"],
+  "private_key": env["FIREBASE_KEY"],
+  "client_email": env["FIREBASE_EMAIL"],
+  "client_id": env["FIREBASE_ID"],
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": env["FIREBASE_CERT_URL"]
+})
+__app = firebase_admin.initialize_app(cred)
 
 def send_to_token(fcm_token, data):
     # [START send_to_token]

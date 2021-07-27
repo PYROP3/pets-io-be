@@ -148,21 +148,23 @@ def get_req_deauth():
 @app.route(c.EVENT_TRIGGERED_REQUEST, methods=['POST'])
 def post_req_event_triggered():
     app.logger.debug(post_req_event_triggered.__name__)
-    app.logger.debug(request.get_data())
 
     __form = json.loads(request.get_data())
     __now = datetime.utcnow()
     __device_id = __form[c.DEVICE_ID_KEY]
     __img_bytes = base64.b64decode(__form['Img'])
-    __event_extra = None if __form['Extra'] == "null" else __form['Extra']
+    __event_extra = __form['Extra']
 
     # TODO detect pet with AI
     __pet = None
     __user = mongo.event(__now, __device_id, __pet, __img_bytes, __event_extra)
 
     if __user is not None:
+        __msg = notifications.event_to_message(__device_id, __event_extra)
+        app.logger.debug('FCM message -> {}'.format(__msg))
         for __fcm_id in mongo.get_fcm_ids(__user):
-            notifications.send_to_token(__fcm_id, notifications.event_to_message(__device_id, __event_extra))
+            __res = notifications.send_to_token(__fcm_id, __msg)
+            app.logger.debug('Send FCM result={}'.format(__res))
     else:
         app.logger.warn('Device {} triggered event but has no registered user'.format(__device_id))
         abort(401)

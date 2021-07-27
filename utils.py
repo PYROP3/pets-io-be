@@ -1,6 +1,8 @@
 import hashlib
 import re
-from constants import constants as c
+from constants import constants
+
+c = constants()
 
 def hash_password(user, password):
     return hashlib.sha256("{}.{}".format(user, password).encode('utf-8')).hexdigest()
