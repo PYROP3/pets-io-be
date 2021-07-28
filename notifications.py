@@ -1,8 +1,8 @@
 import firebase_admin
 from firebase_admin import messaging
+from dotenv import load_dotenv
 from os import environ as env
 from constants import constants
-from dotenv import load_dotenv
 import utils
 
 load_dotenv()
@@ -12,7 +12,7 @@ cred = firebase_admin.credentials.Certificate({
   "type": "service_account",
   "project_id": "pets-io-tcc",
   "private_key_id": env["FIREBASE_KEY_ID"],
-  "private_key": env["FIREBASE_KEY"],
+  "private_key": env["FIREBASE_KEY"].replace("\\n", "\n"),
   "client_email": env["FIREBASE_EMAIL"],
   "client_id": env["FIREBASE_ID"],
   "auth_uri": "https://accounts.google.com/o/oauth2/auth",
