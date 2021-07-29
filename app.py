@@ -2,12 +2,13 @@ from constants import constants
 from datetime import datetime
 from dotenv import load_dotenv
 from emails import email_sender
-from flask import Flask, request, abort, render_template
+from flask import Flask, request, abort, render_template, send_file
 from mongoclient import mongo_helper
 from types import MethodType
 from bson.binary import Binary
 
 import base64
+import io
 import notifications
 import random
 import string
@@ -221,3 +222,76 @@ def post_req_confirm_device():
     app.logger.debug('Registered device {} to user {}'.format(__device_id, __req[c.USER_EMAIL_KEY]))
     
     return c.SUCCESS_MSG
+
+@app.route(c.GET_DEVICES_REQUEST)
+def get_req_devices():
+    app.logger.debug(get_req_devices.__name__)
+
+    __auth = utils.parse_token(request.headers.get('Authorization'))
+    app.logger.debug('Get devices : {}'.format(__auth))
+
+    if __auth is None:
+        abort(401)
+
+    __user = mongo.session_to_user(__auth)
+    if __user is None:
+        abort(401)
+
+    __devices = mongo.get_device_ids(__user)
+
+    return str(__devices)
+
+@app.route(c.GET_EVENTS_REQUEST)
+def get_req_events():
+    app.logger.debug(get_req_events.__name__)
+
+    __auth = utils.parse_token(request.headers.get('Authorization'))
+    app.logger.debug('Get events : {}'.format(__auth))
+
+    if __auth is None:
+        abort(401)
+    
+    __device_id = request.args.get(c.DEVICE_ID_KEY)
+
+    __user = mongo.session_to_user(__auth)
+    if __user is None or __user != mongo.get_device_owner(__device_id):
+        abort(401)
+
+    __events = []
+    for event in mongo.get_events_for_device(__device_id):
+        event[c.EVENT_ID_KEY] = str(event["_id"])
+        del(event["_id"])
+        del(event[c.EVENT_PICTURE_KEY])
+        del(event[c.DEVICE_ID_KEY])
+        del(event[c.USER_EMAIL_KEY])
+        __events += [event]
+
+    return str(__events)
+
+@app.route(c.GET_EVENT_PICTURE_REQUEST)
+def get_req_event_pic():
+    app.logger.debug(get_req_event_pic.__name__)
+
+    __auth = utils.parse_token(request.headers.get('Authorization'))
+    app.logger.debug('Get events : {}'.format(__auth))
+
+    if __auth is None:
+        abort(401)
+
+    __user = mongo.session_to_user(__auth)
+    if __user is None:
+        abort(401)
+    
+    __event_id = request.args.get(c.EVENT_ID_KEY)
+
+    __event = mongo.get_event_by_id(__event_id)
+
+    if __event is None:
+        abort(400)
+
+    if __event[c.USER_EMAIL_KEY] != __user:
+        abort(400)
+
+    __buffer = io.BytesIO(__event[c.EVENT_PICTURE_KEY])
+
+    return send_file(__buffer, mimetype="image/jpeg")

@@ -15,6 +15,9 @@ class constants:
         self.UPDATE_PET_PICS_REQUEST     = "/updatePetPictures"
         self.REGISTER_DEVICE_REQUEST     = "/registerDevice"
         self.CONFIRM_DEVICE_REQUEST      = "/confirmDeviceRegistration"
+        self.GET_DEVICES_REQUEST         = "/devices"
+        self.GET_EVENTS_REQUEST          = "/events"
+        self.GET_EVENT_PICTURE_REQUEST   = "/eventPicture"
 
         # Scripts
         self.SCRIPT_PATH = "script/"
@@ -45,6 +48,7 @@ class constants:
         self.PET_PICTURES_KEY      = "PetPictures"
         self.DEVICE_ID_KEY         = "DeviceID"
         self.DEVICE_TYPE_KEY       = "DeviceType"
+        self.EVENT_ID_KEY          = "EventID"
         self.EVENT_PICTURE_KEY     = "EventPicture"
         self.EVENT_PET_KEY         = "EventPet"
         self.EVENT_EXTRA_KEY       = "EventExtra"

@@ -1,4 +1,5 @@
 from pymongo import MongoClient
+from bson.objectid import ObjectId
 from constants import constants
 from dotenv import load_dotenv
 from os import environ as env
@@ -44,6 +45,12 @@ class mongo_helper:
 
         return __token
 
+    def session_to_user(self, session):
+        __auth = self.client.sessions.find_one({c.USER_TOKEN_KEY: session}, {c.USER_EMAIL_KEY: 1, "_id": 0})
+        if __auth is not None:
+            return __auth[c.USER_EMAIL_KEY]
+        return None
+
     def logout(self, token, fcm_token):
         __auth = self.client.sessions.find_one_and_delete({c.USER_TOKEN_KEY: token, c.FCM_TOKEN_KEY: fcm_token})
         if __auth is None:
@@ -72,3 +79,26 @@ class mongo_helper:
             for __fcm_query in self.client.sessions.find({c.USER_EMAIL_KEY: user}, {c.FCM_TOKEN_KEY: 1, "_id": 0}):
                 __fcm_ids += [__fcm_query[c.FCM_TOKEN_KEY]]
         return __fcm_ids
+
+    def get_device_ids(self, user):
+        __device_ids = []
+        if user is not None:
+            for __dev_query in self.client.devices.find({c.USER_EMAIL_KEY: user}, {c.DEVICE_ID_KEY: 1, "_id": 0}):
+                __device_ids += [__dev_query[c.DEVICE_ID_KEY]]
+        return __device_ids
+
+    def get_device_owner(self, device):
+        if device is not None:
+            return self.client.devices.find_one({c.DEVICE_ID_KEY: device}, {c.USER_EMAIL_KEY: 1, "_id": 0})[c.USER_EMAIL_KEY]
+        return None
+
+    def get_events_for_device(self, device):
+        if device is not None:
+            __owner = self.get_device_owner(device)
+            return list(self.client.events.find({c.DEVICE_ID_KEY: device, c.USER_EMAIL_KEY: __owner}))
+        return []
+
+    def get_event_by_id(self, event_id):
+        if event_id is not None:
+            return self.client.events.find_one({"_id":ObjectId(event_id)})
+        return None
