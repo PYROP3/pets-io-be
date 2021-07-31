@@ -2,7 +2,7 @@ from constants import constants
 from datetime import datetime
 from dotenv import load_dotenv
 from emails import email_sender
-from flask import Flask, request, abort, render_template, send_file
+from flask import Flask, request, Response, abort, render_template, send_file
 from mongoclient import mongo_helper
 from types import MethodType
 from bson.binary import Binary
@@ -264,9 +264,11 @@ def get_req_events():
         del(event[c.EVENT_PICTURE_KEY])
         del(event[c.DEVICE_ID_KEY])
         del(event[c.USER_EMAIL_KEY])
+        event[c.USER_TIMESTAMP_KEY] = str(event[c.USER_TIMESTAMP_KEY])
+        event[c.EVENT_PET_KEY] = "null" if event[c.EVENT_PET_KEY] is None else event[c.EVENT_PET_KEY]
         __events += [event]
 
-    return str(__events)
+    return Response(str(__events).replace("'", '"'), mimetype="application/json")
 
 @app.route(c.GET_EVENT_PICTURE_REQUEST)
 def get_req_event_pic():
@@ -295,3 +297,6 @@ def get_req_event_pic():
     __buffer = io.BytesIO(__event[c.EVENT_PICTURE_KEY])
 
     return send_file(__buffer, mimetype="image/jpeg")
+
+# TODO missing API: Edit pet in event (String petName)
+# TODO missing API: Delete event (in case of false positive)
