@@ -1,3 +1,4 @@
+from bson.objectid import ObjectId
 from constants import constants
 from datetime import datetime
 from dotenv import load_dotenv
@@ -127,6 +128,8 @@ def post_req_auth():
     __user = db.users.find_one({c.USER_EMAIL_KEY: __email}, {c.USER_PASS_KEY: 0, "_id": 0})
     app.logger.debug('Authenticated user ' + str(__user))
     __user[c.USER_TOKEN_KEY] = __auth
+    if (c.USER_PENDING_PETS_KEY not in __user):
+        __user[c.USER_PENDING_PETS_KEY] = 0
 
     return __user
     
@@ -145,6 +148,93 @@ def get_req_deauth():
     mongo.logout(__auth, __token)
 
     return c.SUCCESS_MSG
+
+@app.route(c.INIT_PENDING_PETS_REQUEST, methods=['POST'])
+def post_req_init_pets():
+    app.logger.debug(post_req_init_pets.__name__)
+
+    __auth = utils.parse_token(request.headers.get('Authorization'))
+    # app.logger.debug('Init pets : {}'.format(__auth))
+
+    if __auth is None:
+        abort(401)
+
+    __user = mongo.session_to_user(__auth)
+
+    if __user is None:
+        abort(401)
+
+    __q = db.users.find_one({c.USER_EMAIL_KEY: __user}, {c.USER_PENDING_PETS_KEY: 1, c.USER_N_PETS_KEY: 1})
+
+    if __q[c.USER_N_PETS_KEY] > 0:
+        app.logger.warn('User {} already has pets {}'.format(__user, __q))
+        abort(409)
+
+    __pet_list = mongo.get_pets(__user)
+    if len(__pet_list) > 0:
+        app.logger.warn('User {} already has pets {}'.format(__user, __pet_list))
+        abort(409)
+
+    __form = json.loads(request.get_data())
+    for __pet in __form:
+        db.pets.insert_one({
+            c.PET_OWNER_KEY: __user,
+            c.PET_NAME_KEY: __pet[c.PET_NAME_KEY],
+            c.PET_PICTURE_KEY: base64.b64decode(__pet[c.PET_PICTURE_KEY])
+        })
+
+    db.users.find_one_and_update({c.USER_EMAIL_KEY: __user}, {'$unset' : {c.USER_PENDING_PETS_KEY:""}, '$set' : {c.USER_N_PETS_KEY:len(__form)}})
+
+    return c.SUCCESS_MSG
+
+@app.route(c.GET_PET_PICTURE_REQUEST)
+def get_req_pet_pic():
+    app.logger.debug(get_req_pet_pic.__name__)
+
+    __auth = utils.parse_token(request.headers.get('Authorization'))
+    #app.logger.debug('Get events : {}'.format(__auth))
+
+    if __auth is None:
+        abort(401)
+
+    __user = mongo.session_to_user(__auth)
+    if __user is None:
+        abort(401)
+    
+    __pet_id = request.args.get(c.PET_ID_KEY)
+
+    __pet = mongo.get_pet(__pet_id, __user)
+
+    if __pet is None:
+        abort(400)
+
+    __buffer = io.BytesIO(__pet[c.PET_PICTURE_KEY])
+
+    return send_file(__buffer, mimetype="image/jpeg")
+
+@app.route(c.GET_PETS_REQUEST)
+def get_req_pets():
+    app.logger.debug(get_req_pets.__name__)
+
+    __auth = utils.parse_token(request.headers.get('Authorization'))
+    #app.logger.debug('Get events : {}'.format(__auth))
+
+    if __auth is None:
+        abort(401)
+
+    __user = mongo.session_to_user(__auth)
+    if __user is None:
+        abort(401)
+
+    __pets = []
+    for __pet in mongo.get_pets(__user):
+        __pet[c.PET_ID_KEY] = str(__pet["_id"])
+        del(__pet["_id"])
+        del(__pet[c.PET_OWNER_KEY])
+        del(__pet[c.PET_PICTURE_KEY])
+        __pets += [str(__pet)]
+    
+    return Response(json.dumps(__pets), mimetype="application/json")
 
 @app.route(c.EVENT_TRIGGERED_REQUEST, methods=['POST'])
 def post_req_event_triggered():
@@ -219,6 +309,10 @@ def post_req_confirm_device():
         c.DEVICE_ID_KEY: __device_id
     })
 
+    db.users.find_one_and_update({
+        c.USER_EMAIL_KEY: __req[c.USER_EMAIL_KEY]
+    },{ "$inc":{c.USER_N_DEVICES_KEY: 1} })
+
     app.logger.debug('Registered device {} to user {}'.format(__device_id, __req[c.USER_EMAIL_KEY]))
     
     return c.SUCCESS_MSG
@@ -246,7 +340,7 @@ def get_req_events():
     app.logger.debug(get_req_events.__name__)
 
     __auth = utils.parse_token(request.headers.get('Authorization'))
-    app.logger.debug('Get events : {}'.format(__auth))
+    #app.logger.debug('Get events : {}'.format(__auth))
 
     if __auth is None:
         abort(401)
@@ -275,7 +369,7 @@ def get_req_event_pic():
     app.logger.debug(get_req_event_pic.__name__)
 
     __auth = utils.parse_token(request.headers.get('Authorization'))
-    app.logger.debug('Get events : {}'.format(__auth))
+    #app.logger.debug('Get events : {}'.format(__auth))
 
     if __auth is None:
         abort(401)
@@ -298,5 +392,55 @@ def get_req_event_pic():
 
     return send_file(__buffer, mimetype="image/jpeg")
 
-# TODO missing API: Edit pet in event (String petName)
-# TODO missing API: Delete event (in case of false positive)
+@app.route(c.DELETE_EVENT_REQUEST)
+def get_req_delete_event():
+    app.logger.debug(get_req_delete_event.__name__)
+
+    __auth = utils.parse_token(request.headers.get('Authorization'))
+    #app.logger.debug('Get events : {}'.format(__auth))
+
+    if __auth is None:
+        abort(401)
+    
+    __event_id = request.args.get(c.EVENT_ID_KEY)
+
+    __user = mongo.session_to_user(__auth)
+    if __user is None:
+        abort(401)
+
+    __event = db.events.find_one_and_delete({"_id": ObjectId(__event_id), c.USER_EMAIL_KEY: __user})
+    if __event is None:
+        app.logger.warn("Could not find event with id {} and user {}".format(__event_id, __user))
+        abort(404)
+    
+    return c.SUCCESS_MSG
+
+@app.route(c.EDIT_EVENT_REQUEST, methods=['POST'])
+def post_req_edit_event():
+    app.logger.debug(post_req_edit_event.__name__)
+
+    __auth = utils.parse_token(request.headers.get('Authorization'))
+    #app.logger.debug('Get events : {}'.format(__auth))
+
+    if __auth is None:
+        abort(401)
+
+    __user = mongo.session_to_user(__auth)
+    if __user is None:
+        abort(401)
+
+    __form = request.get_json()
+
+    __event_id = __form[c.EVENT_ID_KEY]
+    __pet = __form[c.EVENT_PET_KEY]
+
+    __event = db.events.find_one_and_update({"_id": ObjectId(__event_id), c.USER_EMAIL_KEY: __user}, { "$set": {c.EVENT_PET_KEY: __pet} })
+    if __event is None:
+        abort(404)
+    
+    return c.SUCCESS_MSG
+
+app.logger.debug("Ready!")
+
+#TODO edit pet (picture/name/DoB/?)
+#TODO create unified function for authentication

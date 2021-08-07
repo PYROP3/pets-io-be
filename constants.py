@@ -12,12 +12,17 @@ class constants:
         self.RECOVER_PASS_REQUEST        = "/recoverPassword"
         self.EVENT_TRIGGERED_REQUEST     = "/eventTriggered"
         self.GET_PENDING_PETS_REQUEST    = "/getPendingPets"
-        self.UPDATE_PET_PICS_REQUEST     = "/updatePetPictures"
+        self.INIT_PENDING_PETS_REQUEST   = "/initPets"
         self.REGISTER_DEVICE_REQUEST     = "/registerDevice"
         self.CONFIRM_DEVICE_REQUEST      = "/confirmDeviceRegistration"
         self.GET_DEVICES_REQUEST         = "/devices"
         self.GET_EVENTS_REQUEST          = "/events"
         self.GET_EVENT_PICTURE_REQUEST   = "/eventPicture"
+        self.DELETE_EVENT_REQUEST        = "/deleteEvent"
+        self.EDIT_EVENT_REQUEST          = "/editEvent"
+        self.GET_PETS_REQUEST            = "/pets"
+        self.GET_PET_PICTURE_REQUEST     = "/petPicture"
+        self.EDIT_PETS_REQUEST           = "/editPets"
 
         # Scripts
         self.SCRIPT_PATH = "script/"
@@ -54,6 +59,10 @@ class constants:
         self.EVENT_EXTRA_KEY       = "EventExtra"
         self.FCM_TOKEN_KEY         = "FCMToken"
         self.REQUEST_TOKEN_KEY     = "Token"
+        self.PET_PICTURE_KEY       = "PetPicture"
+        self.PET_NAME_KEY          = "PetName"
+        self.PET_ID_KEY            = "PetID"
+        self.PET_OWNER_KEY         = "PetOwner"
 
         # Authentication info
         self.AUTH_TOKEN_LENGTH = 256

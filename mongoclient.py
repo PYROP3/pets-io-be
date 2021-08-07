@@ -58,8 +58,7 @@ class mongo_helper:
 
     def event(self, time, device_id, pet, image, event_extra):
         # Find owner of device
-        __user = self.client.devices.find_one({c.DEVICE_ID_KEY: device_id}, {c.USER_EMAIL_KEY: 1, "_id": 0})
-        __user = None if __user is None else __user[c.USER_EMAIL_KEY]
+        __user = self.get_device_owner(device_id)
         self.logger.debug('Found user {} owner of {}'.format(__user, device_id))
 
         self.client.events.insert_one({
@@ -101,4 +100,16 @@ class mongo_helper:
     def get_event_by_id(self, event_id):
         if event_id is not None:
             return self.client.events.find_one({"_id":ObjectId(event_id)})
+        return None
+
+    def get_pets(self, user):
+        if user is not None:
+            __pets = self.client.pets.find({c.PET_OWNER_KEY: user})
+            if __pets is not None:
+                return [pet for pet in __pets]
+        return []
+
+    def get_pet(self, pet, user):
+        if user is not None and pet is not None:
+            return self.client.pets.find_one({c.PET_OWNER_KEY: user, "_id":ObjectId(pet)})
         return None
