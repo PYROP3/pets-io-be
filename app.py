@@ -277,13 +277,17 @@ def post_req_register_device():
         app.logger.debug('Could not find user for session')
         abort(401)
 
-    # __token = ''.join(random.SystemRandom().choice(string.ascii_uppercase + string.digits) for _ in range(32))
-    __token = "A1B2C3" # FIXME TEST ONLY
-
-    db.pending_devices.insert_one({
-        c.USER_EMAIL_KEY: __db[c.USER_EMAIL_KEY],
-        c.REQUEST_TOKEN_KEY: __token
-    })
+    __req = db.pending_devices.find_one({c.USER_EMAIL_KEY: __db[c.USER_EMAIL_KEY]}, {c.REQUEST_TOKEN_KEY: 1, "_id":0})
+    if __req is not None:
+        __token = __req[c.REQUEST_TOKEN_KEY]
+        app.logger.debug('Found pending token for register : {}'.format(__token))
+    else:
+        # __token = ''.join(random.SystemRandom().choice(string.ascii_uppercase + string.digits) for _ in range(32))
+        __token = "A1B2C3" # FIXME TEST ONLY
+        db.pending_devices.insert_one({
+            c.USER_EMAIL_KEY: __db[c.USER_EMAIL_KEY],
+            c.REQUEST_TOKEN_KEY: __token
+        })
     
     return __token
 
