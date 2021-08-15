@@ -256,6 +256,9 @@ def post_req_event_triggered():
         for __fcm_id in mongo.get_fcm_ids(__user):
             __res = notifications.send_to_token(__fcm_id, __msg)
             app.logger.debug('Send FCM result={}'.format(__res))
+            if __res is None:
+                # Token is no longer valid
+                mongo.invalidate(__fcm_id)
     else:
         app.logger.warn('Device {} triggered event but has no registered user'.format(__device_id))
         abort(401)
@@ -282,8 +285,7 @@ def post_req_register_device():
         __token = __req[c.REQUEST_TOKEN_KEY]
         app.logger.debug('Found pending token for register : {}'.format(__token))
     else:
-        # __token = ''.join(random.SystemRandom().choice(string.ascii_uppercase + string.digits) for _ in range(32))
-        __token = "A1B2C3" # FIXME TEST ONLY
+        __token = ''.join(random.SystemRandom().choice(string.ascii_uppercase + string.digits) for _ in range(32))
         db.pending_devices.insert_one({
             c.USER_EMAIL_KEY: __db[c.USER_EMAIL_KEY],
             c.REQUEST_TOKEN_KEY: __token

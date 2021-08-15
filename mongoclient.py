@@ -20,6 +20,9 @@ class mongo_helper:
         self.client = self.__db.UserData
         self.logger = logger
 
+    def invalidate(self, fcm_token):
+        self.client.sessions.find_one_and_delete({c.FCM_TOKEN_KEY: fcm_token})
+
     def session(self, user, password, fcm_token):
         __pass = utils.hash_password(user, password)
         __auth = self.client.users.find_one({

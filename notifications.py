@@ -33,7 +33,10 @@ def send_to_token(fcm_token, data):
 
     # Send a message to the device corresponding to the provided
     # registration token.
-    return messaging.send(message)
+    try:
+        return messaging.send(message)
+    except Exception:
+        return None
     # [END send_to_token]
 
 def event_to_message(device_id, event_extra):
