@@ -1,12 +1,14 @@
+from ai import Oracle
 from bson.objectid import ObjectId
+from bson.binary import Binary
 from constants import constants
 from datetime import datetime
 from dotenv import load_dotenv
 from emails import email_sender
 from flask import Flask, request, Response, abort, render_template, send_file
 from mongoclient import mongo_helper
+from PIL import Image
 from types import MethodType
-from bson.binary import Binary
 
 import base64
 import io
@@ -243,12 +245,15 @@ def post_req_event_triggered():
     __form = json.loads(request.get_data())
     __now = datetime.utcnow()
     __device_id = __form[c.DEVICE_ID_KEY]
-    __img_bytes = base64.b64decode(__form['Img'])
+    __buffer = io.BytesIO()
+    Image.open(io.BytesIO(base64.b64decode(__form['Img']))).rotate(180.).save(__buffer, format="JPEG")
+    __img_bytes = __buffer.getvalue()
     __event_extra = __form['Extra']
 
-    # TODO detect pet with AI
-    __pet = None
+    __pet = Oracle(mongo.get_device_owner(__device_id), __device_id, mongo).predict(__img_bytes) if len(__img_bytes) else None
     __user = mongo.event(__now, __device_id, __pet, __img_bytes, __event_extra)
+
+    app.logger.debug("Device {} triggered event [time={}, pic_len={}, pet={}]".format(__device_id, __now, len(__img_bytes), __pet))
 
     if __user is not None:
         __msg = notifications.event_to_message(__device_id, __event_extra)
@@ -368,7 +373,7 @@ def get_req_events():
         event[c.EVENT_PET_KEY] = "null" if event[c.EVENT_PET_KEY] is None else event[c.EVENT_PET_KEY]
         __events += [event]
 
-    return Response(str(__events).replace("'", '"'), mimetype="application/json")
+    return Response(json.dumps(__events), mimetype="application/json")
 
 @app.route(c.GET_EVENT_PICTURE_REQUEST)
 def get_req_event_pic():
