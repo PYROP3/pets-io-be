@@ -6,7 +6,7 @@ from keras import backend as K
 from PIL import Image
 
 import numpy as np
-#import tensorflow as tf
+import tensorflow as tf
 
 import io
 
@@ -24,7 +24,7 @@ class Oracle:
                 "_id": 0
             })]
 
-        self.unique = list(set([None] + [data[1] for data in self.training_data]))
+        self.unique = tf.unique([data[1] for data in self.training_data])
 
         self.model = Sequential()
         self.model.add(Conv2D(32, (3, 3), input_shape=self.training_data[0][0].shape))
@@ -35,9 +35,9 @@ class Oracle:
         self.model.add(Activation('relu'))
         self.model.add(MaxPooling2D(pool_size=(2, 2)))
 
-        self.model.add(Conv2D(64, (3, 3)))
-        self.model.add(Activation('relu'))
-        self.model.add(MaxPooling2D(pool_size=(2, 2)))
+        # self.model.add(Conv2D(64, (3, 3)))
+        # self.model.add(Activation('relu'))
+        # self.model.add(MaxPooling2D(pool_size=(2, 2)))
 
         self.model.add(Flatten())
         self.model.add(Dense(64))
@@ -50,14 +50,14 @@ class Oracle:
               optimizer='rmsprop',
               metrics=['accuracy'])
 
-        self._fit_history = self.model.fit(x=np.array([data[0] for data in self.training_data]), y=np.array([self.unique.index(data[1]) for data in self.training_data]), epochs=10)
+        self._fit_history = self.model.fit(x=np.array([data[0] for data in self.training_data]), y=self.unique.idx.numpy(), epochs=5)
 
     def predict(self, picture):
         guess = self.model.predict(np.array([np.array(Image.open(io.BytesIO(picture)))]))[0][0]
         _guess = int(guess)
         if (guess - int(guess) > .5):
             _guess += 1
-        return self.unique[_guess].decode("UTF-8")
+        return self.unique.y.numpy()[_guess].decode("UTF-8")
     #     _guess = 0 if guess < .5 else 1
     # print("Guess was {} -> {} ({}% certain) = {}".format(guess, _guess, abs(guess-.5)*100./.5, unique.y.numpy()[_guess]))
     # print("Data was {} ({})".format(pet, "SUCCESS" if unique.y.numpy()[_guess] == bytes(pet, "UTF-8") else "*** FAIL ***"))
