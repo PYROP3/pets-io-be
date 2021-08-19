@@ -18,6 +18,7 @@ import random
 import string
 import utils
 import json
+import keepalive
 
 load_dotenv()
 
@@ -468,6 +469,7 @@ def post_req_edit_event():
     return c.SUCCESS_MSG
 
 app.logger.debug("Ready!")
+keepalive.keepalive(app.logger)
 
 #TODO edit pet (picture/name/DoB/?)
 #TODO create unified function for authentication
