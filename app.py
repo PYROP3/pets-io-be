@@ -8,8 +8,9 @@ from emails import email_sender
 from flask import Flask, request, Response, abort, render_template, send_file
 from mongoclient import mongo_helper
 from PIL import Image
-from types import MethodType
+from threading import Thread
 
+import atexit
 import base64
 import io
 import gc
@@ -469,7 +470,10 @@ def post_req_edit_event():
     return c.SUCCESS_MSG
 
 app.logger.debug("Ready!")
-keepalive.keepalive(app.logger)
+thread = Thread(target = keepalive.keepalive, args = (app.logger, ))
+thread.daemon = False
 
+thread.start()
+atexit.register(lambda: app.logger.debug, "Exiting...")
 #TODO edit pet (picture/name/DoB/?)
 #TODO create unified function for authentication
