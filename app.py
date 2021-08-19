@@ -12,6 +12,7 @@ from types import MethodType
 
 import base64
 import io
+import gc
 import notifications
 import random
 import string
@@ -28,6 +29,9 @@ app.logger.root.setLevel(0)
 
 mongo = mongo_helper(app.logger)
 db = mongo.client
+
+def cleanup():
+    app.logger.debug("cleanup : {}".format(gc.collect()))
 
 @app.route("/")
 def hello_world():
@@ -242,33 +246,45 @@ def get_req_pets():
 def post_req_event_triggered():
     app.logger.debug(post_req_event_triggered.__name__)
 
-    __form = json.loads(request.get_data())
-    __now = datetime.utcnow()
-    __device_id = __form[c.DEVICE_ID_KEY]
-    __buffer = io.BytesIO()
-    Image.open(io.BytesIO(base64.b64decode(__form['Img']))).rotate(180.).save(__buffer, format="JPEG")
-    __img_bytes = __buffer.getvalue()
-    __event_extra = __form['Extra']
+    __data = request.get_data()
+    app.logger.debug("data len: {}".format(len(__data)))
 
-    __pet = Oracle(mongo.get_device_owner(__device_id), __device_id, mongo).predict(__img_bytes) if len(__img_bytes) else None
-    __user = mongo.event(__now, __device_id, __pet, __img_bytes, __event_extra)
+    if len(__data) > 0:
+        __form = json.loads(__data)
+        __now = datetime.utcnow()
+        __device_id = __form[c.DEVICE_ID_KEY]
+        __buffer = io.BytesIO()
+        Image.open(io.BytesIO(base64.b64decode(__form['Img']))).rotate(180.).save(__buffer, format="JPEG")
+        __img_bytes = __buffer.getvalue()
+        __event_extra = __form['Extra']
 
-    app.logger.debug("Device {} triggered event [time={}, pic_len={}, pet={}]".format(__device_id, __now, len(__img_bytes), __pet))
+        __oracle = Oracle(mongo.get_device_owner(__device_id), __device_id, mongo)
+        __pet = __oracle.predict(__img_bytes) if len(__img_bytes) else None
+        del(__oracle)
+        cleanup()
+        __user = mongo.event(__now, __device_id, __pet, __img_bytes, __event_extra)
 
-    if __user is not None:
-        __msg = notifications.event_to_message(__device_id, __event_extra)
-        app.logger.debug('FCM message -> {}'.format(__msg))
-        for __fcm_id in mongo.get_fcm_ids(__user):
-            __res = notifications.send_to_token(__fcm_id, __msg)
-            app.logger.debug('Send FCM result={}'.format(__res))
-            if __res is None:
-                # Token is no longer valid
-                mongo.invalidate(__fcm_id)
+        app.logger.debug("Device {} triggered event [time={}, pic_len={}, pet={}]".format(__device_id, __now, len(__img_bytes), __pet))
+
+        if __user is not None:
+            __msg = notifications.event_to_message(__device_id, __event_extra)
+            app.logger.debug('FCM message -> {}'.format(__msg))
+            for __fcm_id in mongo.get_fcm_ids(__user):
+                __res = notifications.send_to_token(__fcm_id, __msg)
+                app.logger.debug('Send FCM result={}'.format(__res))
+                if __res is None:
+                    # Token is no longer valid
+                    mongo.invalidate(__fcm_id)
+        else:
+            app.logger.warn('Device {} triggered event but has no registered user'.format(__device_id))
+            abort(401)
+
+        return c.SUCCESS_MSG
     else:
-        app.logger.warn('Device {} triggered event but has no registered user'.format(__device_id))
-        abort(401)
+        app.logger.warn('Received empty data')
+        mongo.failed_event(datetime.utcnow())
 
-    return c.SUCCESS_MSG
+        return c.SUCCESS_MSG
 
 @app.route(c.REGISTER_DEVICE_REQUEST, methods=['POST'])
 def post_req_register_device():

@@ -43,7 +43,7 @@ class Oracle:
         self.model.add(Dense(64))
         self.model.add(Activation('relu'))
         self.model.add(Dropout(0.5))
-        self.model.add(Dense(1)) # <- n should be amount of pets found + 1 (unknown/None)
+        self.model.add(Dense(1))
         self.model.add(Activation('sigmoid'))
 
         self.model.compile(loss='binary_crossentropy',
@@ -57,7 +57,7 @@ class Oracle:
         _guess = int(guess)
         if (guess - int(guess) > .5):
             _guess += 1
-        return self.unique.y.numpy()[_guess].decode("UTF-8")
+        return self.unique.y.numpy()[_guess].decode("UTF-8")[:]
     #     _guess = 0 if guess < .5 else 1
     # print("Guess was {} -> {} ({}% certain) = {}".format(guess, _guess, abs(guess-.5)*100./.5, unique.y.numpy()[_guess]))
     # print("Data was {} ({})".format(pet, "SUCCESS" if unique.y.numpy()[_guess] == bytes(pet, "UTF-8") else "*** FAIL ***"))
