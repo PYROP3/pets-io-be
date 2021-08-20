@@ -75,21 +75,12 @@ class mongo_helper:
 
         return __user
 
-    def failed_event(self, time, device_id):
+    def failed_event(self, time):
         # Find owner of device
-        __user = self.get_device_owner(device_id)
-        self.logger.debug('Found user {} owner of {}'.format(__user, device_id))
 
-        self.client.events.insert_one({
-            c.DEVICE_ID_KEY: device_id,
-            c.USER_EMAIL_KEY: __user,
-            c.USER_TIMESTAMP_KEY: time,
-            c.EVENT_PICTURE_KEY: image,
-            c.EVENT_PET_KEY: pet,
-            c.EVENT_EXTRA_KEY: event_extra
+        self.client.failed_events.insert_one({
+            c.USER_TIMESTAMP_KEY: time
         })
-
-        return __user
 
     def get_fcm_ids(self, user):
         __fcm_ids = []
