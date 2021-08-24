@@ -76,8 +76,6 @@ class mongo_helper:
         return __user
 
     def failed_event(self, time):
-        # Find owner of device
-
         self.client.failed_events.insert_one({
             c.USER_TIMESTAMP_KEY: time
         })

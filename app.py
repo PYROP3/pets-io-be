@@ -260,10 +260,11 @@ def post_req_event_triggered():
         __img_bytes = __buffer.getvalue()
         __event_extra = __form['Extra']
 
-        __oracle = Oracle(mongo.get_device_owner(__device_id), __device_id, mongo)
-        __pet = __oracle.predict(__img_bytes) if len(__img_bytes) else None
-        del(__oracle)
-        cleanup()
+        # __oracle = Oracle(mongo.get_device_owner(__device_id), __device_id, mongo)
+        # __pet = __oracle.predict(__img_bytes) if len(__img_bytes) else None
+        # del(__oracle)
+        # cleanup()
+        __pet = None # Server memory limit, run AI locally
         __user = mongo.event(__now, __device_id, __pet, __img_bytes, __event_extra)
 
         app.logger.debug("Device {} triggered event [time={}, pic_len={}, pet={}]".format(__device_id, __now, len(__img_bytes), __pet))
