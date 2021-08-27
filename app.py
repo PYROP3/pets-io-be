@@ -200,7 +200,6 @@ def get_req_pet_pic():
     app.logger.debug(get_req_pet_pic.__name__)
 
     __auth = utils.parse_token(request.headers.get('Authorization'))
-    #app.logger.debug('Get events : {}'.format(__auth))
 
     if __auth is None:
         abort(401)
@@ -250,31 +249,26 @@ def post_req_event_triggered():
 
     __data = request.get_data()
     app.logger.debug("data len: {}".format(len(__data)))
+    app.logger.debug("request headers: {}".format(request.headers))
 
     if len(__data) > 0:
-        __form = json.loads(__data)
         __now = datetime.utcnow()
-        __device_id = __form[c.DEVICE_ID_KEY]
+        __device_id = request.headers["Device-ID"]
+        __event_extra = "null"
         __buffer = io.BytesIO()
-        Image.open(io.BytesIO(base64.b64decode(__form['Img']))).rotate(180.).save(__buffer, format="JPEG")
-        __img_bytes = __buffer.getvalue()
-        __event_extra = __form['Extra']
-
-        # __oracle = Oracle(mongo.get_device_owner(__device_id), __device_id, mongo)
-        # __pet = __oracle.predict(__img_bytes) if len(__img_bytes) else None
-        # del(__oracle)
-        # cleanup()
+        Image.open(io.BytesIO(__data)).resize((320, 240)).save(__buffer, format="JPEG")
+        __img = __buffer.getvalue()
         __pet = None # Server memory limit, run AI locally
-        __user = mongo.event(__now, __device_id, __pet, __img_bytes, __event_extra)
+        __user = mongo.event(__now, __device_id, __pet, __img, __event_extra)
 
-        app.logger.debug("Device {} triggered event [time={}, pic_len={}, pet={}]".format(__device_id, __now, len(__img_bytes), __pet))
+        app.logger.debug("Device {} triggered event [time={}, pic_len={}, pet={}]".format(__device_id, __now, len(__img), __pet))
 
         if __user is not None:
             __msg = notifications.event_to_message(__device_id, __event_extra)
             app.logger.debug('FCM message -> {}'.format(__msg))
             for __fcm_id in mongo.get_fcm_ids(__user):
                 __res = notifications.send_to_token(__fcm_id, __msg)
-                app.logger.debug('Send FCM result={}'.format(__res))
+                app.logger.debug('Send FCM result to {} => {}'.format(__fcm_id, __res))
                 if __res is None:
                     # Token is no longer valid
                     mongo.invalidate(__fcm_id)
