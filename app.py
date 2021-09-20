@@ -465,10 +465,10 @@ def post_req_edit_event():
     return c.SUCCESS_MSG
 
 app.logger.debug("Ready!")
-thread = Thread(target = keepalive.keepalive, args = (app.logger, ))
-thread.daemon = False
+# thread = Thread(target = keepalive.keepalive, args = (app.logger, ))
+# thread.daemon = False
 
-thread.start()
+# thread.start()
 atexit.register(lambda: app.logger.debug, "Exiting...")
 #TODO edit pet (picture/name/DoB/?)
 #TODO create unified function for authentication
